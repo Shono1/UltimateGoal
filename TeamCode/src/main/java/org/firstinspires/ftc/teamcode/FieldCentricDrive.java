@@ -2,13 +2,19 @@ package org.firstinspires.ftc.teamcode;
 
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
+import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.PIDCoefficients;
+import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.Servo;
+
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 
 @Config
 @TeleOp
@@ -23,7 +29,10 @@ public class FieldCentricDrive extends OpMode {
     public static double d = 0;
     public static double f = 0;
 
-    public static double velocity = 0.67;
+    public static double velocity = 80;
+
+    public static double firePos = 0;
+    public static double restPos = 0.2;
 
     public void init() {
         frontLeft = hardwareMap.get(DcMotor.class, "fl");
@@ -49,6 +58,7 @@ public class FieldCentricDrive extends OpMode {
         flywheel.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         flywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
+
         dashboard = FtcDashboard.getInstance();
 
 
@@ -56,10 +66,13 @@ public class FieldCentricDrive extends OpMode {
 
     private long fireTime;
     public void loop() {
-        double theta = imu.getAngularOrientation().firstAngle;
-        double fwd = gamepad1.left_stick_y * Math.cos(theta) + gamepad1.left_stick_x * Math.sin(theta);
-        double strafe = -gamepad1.left_stick_y * Math.sin(theta) + gamepad1.left_stick_x * Math.cos(theta);
-        setVelos(fwd, strafe, 0.4 * gamepad1.right_stick_x);
+        double gyroTheta = (imu.getAngularOrientation().firstAngle + (2 * Math.PI)) % (2 * Math.PI);
+        double magnitude = Math.sqrt(Math.pow(gamepad1.left_stick_x, 2) + Math.pow(gamepad1.left_stick_y, 2));
+        double joyTheta = Math.atan2(gamepad1.left_stick_y, gamepad1.left_stick_x);
+        joyTheta += gyroTheta;
+        setVelos(magnitude * Math.sin(joyTheta), -magnitude * Math.cos(joyTheta), 0.8 * gamepad1.right_stick_x);
+
+        // flywheel.setVelocityPIDFCoefficients(p, i, d, f);
 
         if(gamepad1.a) {
             intake.setPower(1);
@@ -72,23 +85,35 @@ public class FieldCentricDrive extends OpMode {
         }
 
         if(gamepad1.right_bumper) {
-            flywheel.setVelocity(velocity);
+            flywheel.setVelocity(28 * velocity);
+        }
+        else if(gamepad1.left_bumper) {
+            flywheel.setPower(1);
         }
         else {
-            flywheel.setPower(0);
+            flywheel.setVelocity(0);
         }
 
         if(gamepad1.x) {
-            fire.setPosition(0.75);
+            fire.setPosition(firePos);
             fireTime = System.currentTimeMillis();
         }
-        else if(System.currentTimeMillis() > fireTime + 750) {
-            fire.setPosition(0.92);
+        else if(System.currentTimeMillis() > fireTime + 200) {
+            fire.setPosition(restPos);
         }
 
         telemetry.addData("pos", fire.getPosition());
         telemetry.addData("pow", flywheel.getPower());
         telemetry.addData("vel", flywheel.getVelocity());
+        telemetry.addData("robot angle", imu.getAngularOrientation().firstAngle);
+        telemetry.addData("magnitude", magnitude);
+        telemetry.addData("joyTheta", joyTheta);
+        TelemetryPacket velo = new TelemetryPacket();
+        velo.put("velocity", flywheel.getVelocity());
+        velo.put("current", flywheel.getCurrent(CurrentUnit.AMPS));
+        velo.put("delta", velocity - flywheel.getVelocity());
+        velo.put("pidf", flywheel.getPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER).toString());
+        dashboard.sendTelemetryPacket(velo);
         telemetry.update();
 
     }
