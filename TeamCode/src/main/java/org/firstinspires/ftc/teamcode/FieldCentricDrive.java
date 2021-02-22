@@ -6,6 +6,7 @@ import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
@@ -19,9 +20,10 @@ import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 @Config
 @TeleOp
 public class FieldCentricDrive extends OpMode {
-    private DcMotor frontLeft, frontRight, backLeft, backRight, intake;
+    private DcMotor frontLeft, frontRight, backLeft, backRight, intake, wobble;
     private DcMotorEx flywheel;
     private Servo fire;
+    private CRServo grab;
     private BNO055IMU imu;
     private FtcDashboard dashboard;
     public static double p = 0;
@@ -29,7 +31,7 @@ public class FieldCentricDrive extends OpMode {
     public static double d = 0;
     public static double f = 0;
 
-    public static double velocity = 80;
+    public static double velocity = 56;
 
     public static double firePos = 0;
     public static double restPos = 0.2;
@@ -41,8 +43,11 @@ public class FieldCentricDrive extends OpMode {
         backRight = hardwareMap.get(DcMotor.class, "br");
         flywheel = hardwareMap.get(DcMotorEx.class, "fly");
         intake = hardwareMap.get(DcMotor.class, "intake");
+        wobble = hardwareMap.get(DcMotor.class, "wobble");
 
         fire = hardwareMap.get(Servo.class, "fire");
+        grab = hardwareMap.crservo.get("grab");
+
 
         imu = hardwareMap.get(BNO055IMU.class, "imu");
         BNO055IMU.Parameters parameters = new BNO055IMU.Parameters();
@@ -65,6 +70,7 @@ public class FieldCentricDrive extends OpMode {
     }
 
     private long fireTime;
+    private int grabberMode = 0;
     public void loop() {
         double gyroTheta = (imu.getAngularOrientation().firstAngle + (2 * Math.PI)) % (2 * Math.PI);
         double magnitude = Math.sqrt(Math.pow(gamepad1.left_stick_x, 2) + Math.pow(gamepad1.left_stick_y, 2));
@@ -102,20 +108,31 @@ public class FieldCentricDrive extends OpMode {
             fire.setPosition(restPos);
         }
 
-        telemetry.addData("pos", fire.getPosition());
-        telemetry.addData("pow", flywheel.getPower());
-        telemetry.addData("vel", flywheel.getVelocity());
-        telemetry.addData("robot angle", imu.getAngularOrientation().firstAngle);
-        telemetry.addData("magnitude", magnitude);
-        telemetry.addData("joyTheta", joyTheta);
+        if(gamepad1.right_trigger > 0) {
+            wobble.setPower(gamepad1.right_trigger);
+        }
+        else if(gamepad1.left_trigger > 0) {
+            wobble.setPower(-gamepad1.left_trigger);
+        }
+        else {
+            wobble.setPower(0);
+        }
+
+        if (gamepad1.dpad_left) {
+            grab.setPower(0.5);
+        }
+        else if(gamepad1.dpad_right) {
+            grab.setPower(-0.5);
+        }
+        else {
+            grab.setPower(0);
+        }
+
         TelemetryPacket velo = new TelemetryPacket();
         velo.put("velocity", flywheel.getVelocity());
-        velo.put("current", flywheel.getCurrent(CurrentUnit.AMPS));
-        velo.put("delta", velocity - flywheel.getVelocity());
+        velo.put("delta", velocity * 28 - flywheel.getVelocity());
         velo.put("pidf", flywheel.getPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER).toString());
         dashboard.sendTelemetryPacket(velo);
-        telemetry.update();
-
     }
 
     private void setVelos(double y, double x, double r) {
