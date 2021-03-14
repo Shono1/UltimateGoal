@@ -32,6 +32,7 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.PIDFCoefficients;
+import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 import com.qualcomm.robotcore.hardware.configuration.typecontainers.MotorConfigurationType;
 
@@ -92,9 +93,14 @@ public class SampleMecanumDrive extends MecanumDrive {
 
     private LinkedList<Pose2d> poseHistory;
 
-    private DcMotorEx leftFront, leftRear, rightRear, rightFront;
+    private DcMotorEx leftFront, leftRear, rightRear, rightFront, flywheel, wobble;
     private List<DcMotorEx> motors;
+    private DcMotor intake;
     private BNO055IMU imu;
+
+    private Servo grab1, grab2, fire;
+    private static double openPos;
+    private static double closePos;
 
     private VoltageSensor batteryVoltageSensor;
 
@@ -148,6 +154,21 @@ public class SampleMecanumDrive extends MecanumDrive {
 
         motors = Arrays.asList(leftFront, leftRear, rightRear, rightFront);
 
+        wobble = hardwareMap.get(DcMotorEx.class, "wobble");
+        intake = hardwareMap.get(DcMotor.class, "intake");
+        flywheel = hardwareMap.get(DcMotorEx.class, "fly");
+
+        flywheel.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        flywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+        wobble.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        wobble.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        wobble.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
+        grab1 = hardwareMap.get(Servo.class, "grab1");
+        grab2 = hardwareMap.get(Servo.class, "grab2");
+        fire = hardwareMap.get(Servo.class, "fire");
+
         for (DcMotorEx motor : motors) {
             MotorConfigurationType motorConfigurationType = motor.getMotorType().clone();
             motorConfigurationType.setAchieveableMaxRPMFraction(1.0);
@@ -170,7 +191,27 @@ public class SampleMecanumDrive extends MecanumDrive {
 
         // TODO: if desired, use setLocalizer() to change the localization method
         // for instance, setLocalizer(new ThreeTrackingWheelLocalizer(...));
-        setLocalizer(new MyTwoWheelTrackingLocalizer(hardwareMap, this));
+        setLocalizer(new MyTwoWheelTrackingLocalizer(hardwareMap));
+    }
+
+    public void lowerWobble() { // TODO: Test me!!!!
+        wobble.setTargetPosition(-400);
+    }
+
+    public void dropWobble() {
+        // TODO: Populate
+    }
+
+    public void spinFlywheel(double vel) {
+        flywheel.setVelocity(28 * vel);
+    }
+
+    public void fire() {
+        fire.setPosition(0);
+    }
+
+    public void rest() {
+        fire.setPosition(0.2);
     }
 
     public TrajectoryBuilder trajectoryBuilder(Pose2d startPose) {

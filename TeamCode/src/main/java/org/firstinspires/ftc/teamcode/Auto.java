@@ -1,6 +1,8 @@
 package org.firstinspires.ftc.teamcode;
 
 import com.acmerobotics.roadrunner.geometry.Pose2d;
+import com.acmerobotics.roadrunner.geometry.Vector2d;
+import com.acmerobotics.roadrunner.trajectory.Trajectory;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
@@ -11,6 +13,8 @@ import org.firstinspires.ftc.robotcore.external.navigation.VuforiaLocalizer;
 import org.firstinspires.ftc.robotcore.external.tfod.Recognition;
 import org.firstinspires.ftc.robotcore.external.tfod.TFObjectDetector;
 import org.firstinspires.ftc.teamcode.drive.SampleMecanumDrive;
+import org.firstinspires.ftc.teamcode.util.AssetsTrajectoryManager;
+import org.firstinspires.ftc.teamcode.util.PoseStorage;
 
 import java.util.List;
 
@@ -27,16 +31,40 @@ public class Auto extends LinearOpMode {
                     "7xaeIct9lfKK+BkH1es3kQ8V9o+nEYM/QBB6HBHdeH2oqaBwBZhVJN8h";
     private VuforiaLocalizer vuforia;
     private TFObjectDetector tfod;
+    private static final Pose2d STARTING_POS = new Pose2d(-63, -48, Math.toRadians(-90));
+    private static Pose2d A_Pos = new Pose2d(12, -48, -90);
+    private static Pose2d B_Pos = new Pose2d(36, -48, 90);
+    private static Pose2d C_Pos = new Pose2d(60, -48, -90);
+    private final String LABELB = "B";
+    private final String LABELC = "C";
+    private static Pose2d powerShotPos = new Pose2d();
+    private static double psVelo = 46;
+
+
+
 
     @Override
     public void runOpMode() throws InterruptedException {
         SampleMecanumDrive drive = new SampleMecanumDrive(hardwareMap);
-        drive.setPoseEstimate(new Pose2d());
+        drive.setPoseEstimate(STARTING_POS);
         initVuforia();
         initTfod();
-        int stackSize = 0;
+        int stackSize = 0; // 0 A, 1 B, 4 C
+
+//        Trajectory toWobbleDeliveryBranch = AssetsTrajectoryManager.load("toWobbleDeliveryBranch"); // TODO: Do I need .yaml?
+//        Trajectory
+        Trajectory toWobbleDeliveryBranch = drive.trajectoryBuilder(STARTING_POS)
+                .strafeTo(new Vector2d(-12, -48))
+                .addTemporalMarker(1, () -> {
+                    drive.lowerWobble();
+                })
+                .build();
+        Trajectory wobbleDeliveryTraj1 = drive.trajectoryBuilder(toWobbleDeliveryBranch.end())
+                .lineToSplineHeading(new Pose2d(12, -48, Math.toRadians(-90)))
+                .build();
 
         while(!isStarted()) {
+
             if (tfod != null) {
                 List<Recognition> updatedRecognitions = tfod.getUpdatedRecognitions();
                 if (updatedRecognitions != null) {
@@ -48,18 +76,65 @@ public class Auto extends LinearOpMode {
                                 recognition.getLeft(), recognition.getTop());
                         telemetry.addData(String.format("  right,bottom (%d)", i), "%.03f , %.03f",
                                 recognition.getRight(), recognition.getBottom());
+                        if (recognition.getLabel().equals(LABELB)) {
+                            wobbleDeliveryTraj1 = drive.trajectoryBuilder(toWobbleDeliveryBranch.end())
+                                    .lineToSplineHeading(new Pose2d(36, -48, Math.toRadians(90)))
+                                    .build();
+                        }
+                        else if (recognition.getLabel().equals(LABELC)) {
+                            wobbleDeliveryTraj1 = drive.trajectoryBuilder(toWobbleDeliveryBranch.end())
+                                    .lineToSplineHeading(new Pose2d(60, -48, Math.toRadians(-90)))
+                                    .build();
+                        }
                     }
                     telemetry.update();
-                    // TODO: If stack zero, one, four set stackSize to value close camera stream and break
+                    // TODO: If stack zero, one, four set stackSize to value close camera stream and break; set traj1 and traj2 using toWobbleDeliveryBranch.end
+
                 }
             }
         }
 
         waitForStart();
+        drive.followTrajectory(toWobbleDeliveryBranch); // Drive forward to near front of delivery zones
+        drive.followTrajectory(wobbleDeliveryTraj1); // Drive to the correct drop zone
+        drive.dropWobble(); // Release wobble goal from gripper
+        // TODO: Powershot heading
+        double psHeading1 = 16; // Degrees; Angle to first powershot
+        Trajectory toPS = drive.trajectoryBuilder(wobbleDeliveryTraj1.end())
+                .splineToLinearHeading(new Pose2d(-6, 35, Math.toRadians(psHeading1)), 0)
+                .addTemporalMarker(1, () -> {
+                    drive.spinFlywheel(psVelo);
+                }).build();
 
+        drive.followTrajectory(toPS); // Drive to powershot shooting spot
 
+        drive.fire();
+        sleep(200);
+        drive.rest();
 
+        // TODO: Second and third PS
+        Trajectory lastPSHeading;
+        drive.spinFlywheel(0);
+
+        Trajectory grabWobbleTwo = drive.trajectoryBuilder(lastPSHeading.end())
+                .lineToLinearHeading(new Pose2d(-38, -24, Math.toRadians(180)))
+                .build();
+        drive.followTrajectory(grabWobbleTwo);
+        // TODO: Do the actual grabby
+
+        Trajectory deliverWobbleTwo = drive.trajectoryBuilder(grabWobbleTwo.end()) // TODO: This line
+                .lineTo()
+                .build();
+        drive.followTrajectory(deliverWobbleTwo);
+        drive.dropWobble();
+
+        Trajectory park = drive.trajectoryBuilder(deliverWobbleTwo.end())
+                .splineToLinearHeading(new Pose2d(12, -30, 0), 0)
+                .build();
+        drive.followTrajectory(park);
+        PoseStorage.currectPose = drive.getPoseEstimate();
     }
+
 
     private void initVuforia() {
         /*
