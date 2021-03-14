@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode.drive;
 
+import androidx.annotation.LayoutRes;
 import androidx.annotation.NonNull;
 
 import com.acmerobotics.dashboard.config.Config;
@@ -31,9 +32,10 @@ public class StandardTrackingWheelLocalizer extends ThreeTrackingWheelLocalizer 
     public static double WHEEL_RADIUS = 1; // in
     public static double GEAR_RATIO = 1; // output (wheel) speed / input (encoder) speed
 
-    public static double LATERAL_DISTANCE = 2.93869379; // in; distance between the left and right wheels
-    public static double FORWARD_OFFSET = 2.940; // in; offset of the lateral wheel
-    public static double FORWARD_Y_OFFSET = 1.201; // in; lateral offset of the lateral wheel
+    public static double LATERAL_DISTANCE = 3.3411586; // in; distance between the left and right wheels
+    public static double LATEEAL_Y_OFFSET = -0.1895;
+    public static double FORWARD_OFFSET = -3.6255; // in; offset of the lateral wheel
+    public static double FORWARD_Y_OFFSET = -1.3025; // in; lateral offset of the lateral wheel
 
     private Encoder leftEncoder, rightEncoder, frontEncoder;
 
@@ -42,23 +44,26 @@ public class StandardTrackingWheelLocalizer extends ThreeTrackingWheelLocalizer 
     // 94.5 / 96.7826541825818
     // 94.5 / 96.74290006716065
     // 94.5 / 96.51919312046846
-    public static double Y_MULTIPLIER = 1; // Multiplier in the Y direction
+    public static double Y_MULTIPLIER = 0.9673518; // Multiplier in the Y direction
     // 94.5 / 89.60948629031263
     // 94.5 /
     // 94.5 /
 
     public StandardTrackingWheelLocalizer(HardwareMap hardwareMap) {
         super(Arrays.asList(
-                new Pose2d(0, LATERAL_DISTANCE / 2, 0), // left
-                new Pose2d(0, -LATERAL_DISTANCE / 2, 0), // right
+                new Pose2d(2.838, LATERAL_DISTANCE / 2 + LATEEAL_Y_OFFSET, 0), // left
+                new Pose2d(2.838, -LATERAL_DISTANCE / 2 + LATEEAL_Y_OFFSET, 0), // right
                 new Pose2d(FORWARD_OFFSET, FORWARD_Y_OFFSET, Math.toRadians(90)) // front // DONE: y = Y_OFFSET!!! Original code will not work until y does not equal zero
         ));
 
-        leftEncoder = new Encoder(hardwareMap.get(DcMotorEx.class, "leftEncoder"));
-        rightEncoder = new Encoder(hardwareMap.get(DcMotorEx.class, "intake"));
+//        leftEncoder = new Encoder(hardwareMap.get(DcMotorEx.class, "leftEncoder"));
+//        rightEncoder = new Encoder(hardwareMap.get(DcMotorEx.class, "intake"));
+        leftEncoder = new Encoder(hardwareMap.get(DcMotorEx.class, "intake"));
+        rightEncoder = new Encoder(hardwareMap.get(DcMotorEx.class, "leftEncoder"));
         frontEncoder = new Encoder(hardwareMap.get(DcMotorEx.class, "wobble"));
 
-        frontEncoder.setDirection(Encoder.Direction.REVERSE);
+
+        //frontEncoder.setDirection(Encoder.Direction.REVERSE);
 
 
         // TODO: reverse any encoders using Encoder.setDirection(Encoder.Direction.REVERSE)

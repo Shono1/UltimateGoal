@@ -1,7 +1,5 @@
 package org.firstinspires.ftc.teamcode.drive;
 
-import androidx.annotation.NonNull;
-
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.canvas.Canvas;
 import com.acmerobotics.dashboard.config.Config;
@@ -43,6 +41,8 @@ import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
+import androidx.annotation.NonNull;
+
 import static org.firstinspires.ftc.teamcode.drive.DriveConstants.MAX_ACCEL;
 import static org.firstinspires.ftc.teamcode.drive.DriveConstants.MAX_ANG_ACCEL;
 import static org.firstinspires.ftc.teamcode.drive.DriveConstants.MAX_ANG_VEL;
@@ -59,7 +59,7 @@ import static org.firstinspires.ftc.teamcode.drive.DriveConstants.kV;
  * Simple mecanum drive hardware implementation for REV hardware.
  */
 @Config
-public class SampleMecanumDrive extends MecanumDrive {
+public class CustomMecanumDrive extends MecanumDrive {
     public static PIDCoefficients TRANSLATIONAL_PID = new PIDCoefficients(0.275, 0, 0);
     public static PIDCoefficients HEADING_PID = new PIDCoefficients(-0.23, 0, 0);
 
@@ -93,6 +93,7 @@ public class SampleMecanumDrive extends MecanumDrive {
     private LinkedList<Pose2d> poseHistory;
 
     private DcMotorEx leftFront, leftRear, rightRear, rightFront;
+    private DcMotor wobble, intake;
     private List<DcMotorEx> motors;
     private BNO055IMU imu;
 
@@ -100,7 +101,7 @@ public class SampleMecanumDrive extends MecanumDrive {
 
     private Pose2d lastPoseOnTurn;
 
-    public SampleMecanumDrive(HardwareMap hardwareMap) {
+    public CustomMecanumDrive(HardwareMap hardwareMap) {
         super(kV, kA, kStatic, TRACK_WIDTH, TRACK_WIDTH, LATERAL_MULTIPLIER);
 
         dashboard = FtcDashboard.getInstance();
@@ -132,10 +133,10 @@ public class SampleMecanumDrive extends MecanumDrive {
         }
 
 //        // TODO: adjust the names of the following hardware devices to match your configuration
-        imu = hardwareMap.get(BNO055IMU.class, "imu1");
-        BNO055IMU.Parameters parameters = new BNO055IMU.Parameters();
-        parameters.angleUnit = BNO055IMU.AngleUnit.RADIANS;
-        imu.initialize(parameters);
+//        imu = hardwareMap.get(BNO055IMU.class, "imu");
+//        BNO055IMU.Parameters parameters = new BNO055IMU.Parameters();
+//        parameters.angleUnit = BNO055IMU.AngleUnit.RADIANS;
+//        imu.initialize(parameters);
 
         // TODO: if your hub is mounted vertically, remap the IMU axes so that the z-axis points
         // upward (normal to the floor) using a command like the following:
@@ -170,7 +171,7 @@ public class SampleMecanumDrive extends MecanumDrive {
 
         // TODO: if desired, use setLocalizer() to change the localization method
         // for instance, setLocalizer(new ThreeTrackingWheelLocalizer(...));
-        setLocalizer(new MyTwoWheelTrackingLocalizer(hardwareMap, this));
+        setLocalizer(new StandardTrackingWheelLocalizer(hardwareMap));
     }
 
     public TrajectoryBuilder trajectoryBuilder(Pose2d startPose) {
@@ -397,6 +398,6 @@ public class SampleMecanumDrive extends MecanumDrive {
 
     @Override
     public double getRawExternalHeading() {
-        return imu.getAngularOrientation().firstAngle;
+        return 0;
     }
 }
