@@ -42,8 +42,8 @@ public class MyTwoWheelTrackingLocalizer extends TwoTrackingWheelLocalizer {
     public static double PARALLEL_X = 2.838; // X is the up and down direction
     public static double PARALLEL_Y = 1.8; // Y is the strafe direction
 
-    public static double PERPENDICULAR_X = 3.7215;
-    public static double PERPENDICULAR_Y = 0.85;
+    public static double PERPENDICULAR_X = -3.7215;
+    public static double PERPENDICULAR_Y = -0.85;
 
     // Parallel/Perpendicular to the forward axis
     // Parallel wheel is parallel to the forward axis
@@ -52,7 +52,7 @@ public class MyTwoWheelTrackingLocalizer extends TwoTrackingWheelLocalizer {
 
     private SampleMecanumDrive drive;
 
-    public MyTwoWheelTrackingLocalizer(HardwareMap hardwareMap) {
+    public MyTwoWheelTrackingLocalizer(HardwareMap hardwareMap, SampleMecanumDrive drive) {
         super(Arrays.asList(
                 new Pose2d(PARALLEL_X, PARALLEL_Y, 0),
                 new Pose2d(PERPENDICULAR_X, PERPENDICULAR_Y, Math.toRadians(90))
@@ -63,18 +63,22 @@ public class MyTwoWheelTrackingLocalizer extends TwoTrackingWheelLocalizer {
         perpendicularEncoder = new Encoder(hardwareMap.get(DcMotorEx.class, "wobble"));
 
         // TODO: reverse any encoders using Encoder.setDirection(Encoder.Direction.REVERSE)
-        perpendicularEncoder.setDirection(Encoder.Direction.REVERSE);
+        // perpendicularEncoder.setDirection(Encoder.Direction.REVERSE);
+
+        this.drive = drive;
     }
 
     public static double encoderTicksToInches(double ticks) {
         return WHEEL_RADIUS * 2 * Math.PI * GEAR_RATIO * ticks / TICKS_PER_REV;
     }
 
+    @NonNull
     @Override
     public double getHeading() {
         return drive.getRawExternalHeading();
     }
 
+    @NonNull
     @Override
     public Double getHeadingVelocity() {
         return drive.getExternalHeadingVelocity();

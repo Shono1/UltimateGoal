@@ -32,9 +32,9 @@ public class Auto extends LinearOpMode {
     private VuforiaLocalizer vuforia;
     private TFObjectDetector tfod;
     private static final Pose2d STARTING_POS = new Pose2d(-63, -48, Math.toRadians(-90));
-    private static Pose2d A_Pos = new Pose2d(12, -48, -90);
-    private static Pose2d B_Pos = new Pose2d(36, -48, 90);
-    private static Pose2d C_Pos = new Pose2d(60, -48, -90);
+    private static Pose2d A_Pos = new Pose2d(12, -48, Math.toRadians(-90));
+    private static Pose2d B_Pos = new Pose2d(36, -48, Math.toRadians(90));
+    private static Pose2d C_Pos = new Pose2d(60, -48, Math.toRadians(-90));
     private final String LABELB = "B";
     private final String LABELC = "C";
     private static Pose2d powerShotPos = new Pose2d();
@@ -51,8 +51,6 @@ public class Auto extends LinearOpMode {
         initTfod();
         int stackSize = 0; // 0 A, 1 B, 4 C
 
-//        Trajectory toWobbleDeliveryBranch = AssetsTrajectoryManager.load("toWobbleDeliveryBranch"); // TODO: Do I need .yaml?
-//        Trajectory
         Trajectory toWobbleDeliveryBranch = drive.trajectoryBuilder(STARTING_POS)
                 .strafeTo(new Vector2d(-12, -48))
                 .addTemporalMarker(1, () -> {
@@ -76,6 +74,7 @@ public class Auto extends LinearOpMode {
                                 recognition.getLeft(), recognition.getTop());
                         telemetry.addData(String.format("  right,bottom (%d)", i), "%.03f , %.03f",
                                 recognition.getRight(), recognition.getBottom());
+
                         if (recognition.getLabel().equals(LABELB)) {
                             wobbleDeliveryTraj1 = drive.trajectoryBuilder(toWobbleDeliveryBranch.end())
                                     .lineToSplineHeading(new Pose2d(36, -48, Math.toRadians(90)))
@@ -88,7 +87,7 @@ public class Auto extends LinearOpMode {
                         }
                     }
                     telemetry.update();
-                    // TODO: If stack zero, one, four set stackSize to value close camera stream and break; set traj1 and traj2 using toWobbleDeliveryBranch.end
+
 
                 }
             }
@@ -116,22 +115,22 @@ public class Auto extends LinearOpMode {
         Trajectory lastPSHeading;
         drive.spinFlywheel(0);
 
-        Trajectory grabWobbleTwo = drive.trajectoryBuilder(lastPSHeading.end())
-                .lineToLinearHeading(new Pose2d(-38, -24, Math.toRadians(180)))
-                .build();
-        drive.followTrajectory(grabWobbleTwo);
-        // TODO: Do the actual grabby
-
-        Trajectory deliverWobbleTwo = drive.trajectoryBuilder(grabWobbleTwo.end()) // TODO: This line
-                .lineTo()
-                .build();
-        drive.followTrajectory(deliverWobbleTwo);
-        drive.dropWobble();
-
-        Trajectory park = drive.trajectoryBuilder(deliverWobbleTwo.end())
-                .splineToLinearHeading(new Pose2d(12, -30, 0), 0)
-                .build();
-        drive.followTrajectory(park);
+//        Trajectory grabWobbleTwo = drive.trajectoryBuilder(lastPSHeading.end())
+//                .lineToLinearHeading(new Pose2d(-38, -24, Math.toRadians(180)))
+//                .build();
+//        drive.followTrajectory(grabWobbleTwo);
+//        // TODO: Do the actual grabby
+//
+//        Trajectory deliverWobbleTwo = drive.trajectoryBuilder(grabWobbleTwo.end()) // TODO: This line
+//                .lineTo()
+//                .build();
+//        drive.followTrajectory(deliverWobbleTwo);
+//        drive.dropWobble();
+//
+//        Trajectory park = drive.trajectoryBuilder(deliverWobbleTwo.end())
+//                .splineToLinearHeading(new Pose2d(12, -30, 0), 0)
+//                .build();
+//        drive.followTrajectory(park);
         PoseStorage.currectPose = drive.getPoseEstimate();
     }
 

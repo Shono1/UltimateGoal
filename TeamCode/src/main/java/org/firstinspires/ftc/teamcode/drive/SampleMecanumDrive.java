@@ -162,7 +162,7 @@ public class SampleMecanumDrive extends MecanumDrive {
         flywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         wobble.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        wobble.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        // wobble.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         wobble.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         grab1 = hardwareMap.get(Servo.class, "grab1");
@@ -191,11 +191,12 @@ public class SampleMecanumDrive extends MecanumDrive {
 
         // TODO: if desired, use setLocalizer() to change the localization method
         // for instance, setLocalizer(new ThreeTrackingWheelLocalizer(...));
-        setLocalizer(new MyTwoWheelTrackingLocalizer(hardwareMap));
+        setLocalizer(new MyTwoWheelTrackingLocalizer(hardwareMap, this));
     }
 
     public void lowerWobble() { // TODO: Test me!!!!
         wobble.setTargetPosition(-400);
+        wobble.setMode(DcMotor.RunMode.RUN_TO_POSITION);
     }
 
     public void dropWobble() {
@@ -439,5 +440,11 @@ public class SampleMecanumDrive extends MecanumDrive {
     @Override
     public double getRawExternalHeading() {
         return imu.getAngularOrientation().firstAngle;
+    }
+
+    @NonNull
+    @Override
+    public Double getExternalHeadingVelocity() {
+        return (double)(imu.getAngularVelocity().zRotationRate);
     }
 }
