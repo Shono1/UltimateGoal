@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode;
 
+import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.roadrunner.geometry.Pose2d;
 import com.acmerobotics.roadrunner.geometry.Vector2d;
 import com.acmerobotics.roadrunner.trajectory.Trajectory;
@@ -19,6 +20,7 @@ import org.firstinspires.ftc.teamcode.util.PoseStorage;
 import java.util.List;
 
 @Autonomous
+@Config
 public class Auto extends LinearOpMode {
     private static final String TFOD_MODEL_ASSET = "UltimateGoal.tflite";
     private static final String LABEL_FIRST_ELEMENT = "Quad";
@@ -38,7 +40,8 @@ public class Auto extends LinearOpMode {
     private final String LABELB = "B";
     private final String LABELC = "C";
     private static Pose2d powerShotPos = new Pose2d();
-    private static double psVelo = 46;
+    public static double psVelo = 51;
+    public static double HGVelo = 54;
 
 
 
@@ -51,18 +54,38 @@ public class Auto extends LinearOpMode {
         initTfod();
         int stackSize = 0; // 0 A, 1 B, 4 C
 
-        Trajectory toWobbleDeliveryBranch = drive.trajectoryBuilder(STARTING_POS)
-                .strafeTo(new Vector2d(-12, -48))
-                .addTemporalMarker(1, () -> {
+        Trajectory startingOffset = drive.trajectoryBuilder(STARTING_POS)
+                .forward(12)
+                .build();
+
+        Trajectory toWobbleDeliveryBranch = drive.trajectoryBuilder(startingOffset.end())
+                .strafeTo(new Vector2d(-2, -60))
+                .addTemporalMarker(0, () -> {
                     drive.lowerWobble();
                 })
+                .addTemporalMarker(1.6, () -> {
+                    drive.stopWobble();
+                })
                 .build();
-        Trajectory wobbleDeliveryTraj1 = drive.trajectoryBuilder(toWobbleDeliveryBranch.end())
-                .lineToSplineHeading(new Pose2d(12, -48, Math.toRadians(-90)))
+
+        Trajectory toShoot = drive.trajectoryBuilder(toWobbleDeliveryBranch.end())
+                .addTemporalMarker(0, () -> {
+                    drive.spinFlywheel(HGVelo); // Set to top goal rpm
+                })
+                .back(24)
                 .build();
+
+        Trajectory wobbleDeliveryTraj1 = drive.trajectoryBuilder(toShoot.end())
+                .lineToSplineHeading(new Pose2d(24, -52, Math.toRadians(-90)))
+                .build();
+
+        if(tfod != null) {
+            tfod.activate();
+            tfod.setZoom(2.5, 16.0/9.0);
+        }
 
         while(!isStarted()) {
-
+            drive.grab.setPower(-0.5);
             if (tfod != null) {
                 List<Recognition> updatedRecognitions = tfod.getUpdatedRecognitions();
                 if (updatedRecognitions != null) {
@@ -75,14 +98,14 @@ public class Auto extends LinearOpMode {
                         telemetry.addData(String.format("  right,bottom (%d)", i), "%.03f , %.03f",
                                 recognition.getRight(), recognition.getBottom());
 
-                        if (recognition.getLabel().equals(LABELB)) {
-                            wobbleDeliveryTraj1 = drive.trajectoryBuilder(toWobbleDeliveryBranch.end())
-                                    .lineToSplineHeading(new Pose2d(36, -48, Math.toRadians(90)))
+                        if (recognition.getLabel().equals(LABEL_SECOND_ELEMENT)) { // Single Stack / 2nd box
+                            wobbleDeliveryTraj1 = drive.trajectoryBuilder(toShoot.end())
+                                    .lineToSplineHeading(new Pose2d(24, -36, 0))
                                     .build();
                         }
-                        else if (recognition.getLabel().equals(LABELC)) {
-                            wobbleDeliveryTraj1 = drive.trajectoryBuilder(toWobbleDeliveryBranch.end())
-                                    .lineToSplineHeading(new Pose2d(60, -48, Math.toRadians(-90)))
+                        else if (recognition.getLabel().equals(LABEL_FIRST_ELEMENT)) {
+                            wobbleDeliveryTraj1 = drive.trajectoryBuilder(toShoot.end()) // Quad / 3rd
+                                    .lineToSplineHeading(new Pose2d(63, -52, Math.toRadians(-90)))
                                     .build();
                         }
                     }
@@ -94,26 +117,72 @@ public class Auto extends LinearOpMode {
         }
 
         waitForStart();
+        drive.followTrajectory(startingOffset);
         drive.followTrajectory(toWobbleDeliveryBranch); // Drive forward to near front of delivery zones
-        drive.followTrajectory(wobbleDeliveryTraj1); // Drive to the correct drop zone
-        drive.dropWobble(); // Release wobble goal from gripper
-        // TODO: Powershot heading
-        double psHeading1 = 16; // Degrees; Angle to first powershot
-        Trajectory toPS = drive.trajectoryBuilder(wobbleDeliveryTraj1.end())
-                .splineToLinearHeading(new Pose2d(-6, 35, Math.toRadians(psHeading1)), 0)
-                .addTemporalMarker(1, () -> {
-                    drive.spinFlywheel(psVelo);
-                }).build();
+        drive.followTrajectory(toShoot);
 
-        drive.followTrajectory(toPS); // Drive to powershot shooting spot
 
-        drive.fire();
-        sleep(200);
-        drive.rest();
+        sleep(1500);
+        for(int i = 0; i < 3; i++) { // Fire thrice
+            drive.fire();
+            sleep(700);
+            drive.rest();
+            sleep(500);
+        }
 
-        // TODO: Second and third PS
-        Trajectory lastPSHeading;
         drive.spinFlywheel(0);
+        drive.followTrajectory(wobbleDeliveryTraj1); // Drive to the correct drop zone
+        drive.grab.setPower(0.5); // Release wobble goal from gripper
+        sleep(200);
+        drive.grab.setPower(0);
+        Trajectory moveBaack = drive.trajectoryBuilder(wobbleDeliveryTraj1.end()).back(12).build();
+        drive.followTrajectory(moveBaack);
+
+        Trajectory park = drive.trajectoryBuilder(moveBaack.end())
+                .lineToLinearHeading(new Pose2d(6, -30, 90))
+                .build();
+
+        drive.followTrajectory(park);
+
+        Trajectory secondWobbleTrajOffset = drive.trajectoryBuilder(wobbleDeliveryTraj1.end())
+                .splineToLinearHeading(new Pose2d(-12, -8, Math.toRadians(180)),0)
+                .build();
+
+//       // TODO: Powershot heading
+//        double psHeading1 = 16; // Degrees; Angle to first powershot
+//        Trajectory toPS = drive.trajectoryBuilder(wobbleDeliveryTraj1.end())
+//                .splineToLinearHeading(new Pose2d(-6, -4, Math.toRadians(-90)), 0)
+//                .addTemporalMarker(0, () -> {
+//                    drive.spinFlywheel(psVelo);
+//                }).build();
+////
+//        drive.followTrajectory(toPS); // Drive to powershot shooting spot
+////
+//        drive.fire();
+//        sleep(200);
+//        drive.rest();
+//
+//        drive.followTrajectory(drive.trajectoryBuilder(toPS.end())
+//                .lineToLinearHeading(new Pose2d(-6, -12, Math.toRadians(-90)))
+//                .build());
+//
+//        drive.fire();
+//        sleep(200);
+//        drive.rest();
+//
+//        drive.followTrajectory(drive.trajectoryBuilder(toPS.end())
+//                .lineToLinearHeading(new Pose2d(-6, -20, Math.toRadians(-90)))
+//                .build());
+//
+//        drive.fire();
+//        sleep(200);
+//        drive.rest();
+
+
+//
+//        // TODO: Second and third PS
+//        Trajectory lastPSHeading;
+//        drive.spinFlywheel(0);
 
 //        Trajectory grabWobbleTwo = drive.trajectoryBuilder(lastPSHeading.end())
 //                .lineToLinearHeading(new Pose2d(-38, -24, Math.toRadians(180)))
@@ -132,6 +201,7 @@ public class Auto extends LinearOpMode {
 //                .build();
 //        drive.followTrajectory(park);
         PoseStorage.currectPose = drive.getPoseEstimate();
+        PoseStorage.imu = drive.getImu();
     }
 
 

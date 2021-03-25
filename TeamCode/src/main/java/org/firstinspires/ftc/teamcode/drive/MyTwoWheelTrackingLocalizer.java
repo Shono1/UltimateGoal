@@ -5,6 +5,7 @@ import androidx.annotation.NonNull;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.roadrunner.geometry.Pose2d;
 import com.acmerobotics.roadrunner.localization.TwoTrackingWheelLocalizer;
+import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
@@ -40,7 +41,7 @@ public class MyTwoWheelTrackingLocalizer extends TwoTrackingWheelLocalizer {
     public static double GEAR_RATIO = 1; // output (wheel) speed / input (encoder) speed
 
     public static double PARALLEL_X = 2.838; // X is the up and down direction
-    public static double PARALLEL_Y = 1.8; // Y is the strafe direction
+    public static double PARALLEL_Y = -1.8; // Y is the strafe direction
 
     public static double PERPENDICULAR_X = -3.7215;
     public static double PERPENDICULAR_Y = -0.85;
@@ -51,22 +52,33 @@ public class MyTwoWheelTrackingLocalizer extends TwoTrackingWheelLocalizer {
     private Encoder parallelEncoder, perpendicularEncoder;
 
     private SampleMecanumDrive drive;
+    private BNO055IMU imu;
 
-    public MyTwoWheelTrackingLocalizer(HardwareMap hardwareMap, SampleMecanumDrive drive) {
+    public MyTwoWheelTrackingLocalizer(HardwareMap hardwareMap, BNO055IMU tempImu) {
         super(Arrays.asList(
                 new Pose2d(PARALLEL_X, PARALLEL_Y, 0),
                 new Pose2d(PERPENDICULAR_X, PERPENDICULAR_Y, Math.toRadians(90))
         ));
 
-
         parallelEncoder = new Encoder(hardwareMap.get(DcMotorEx.class, "leftEncoder"));
         perpendicularEncoder = new Encoder(hardwareMap.get(DcMotorEx.class, "wobble"));
-
-        // TODO: reverse any encoders using Encoder.setDirection(Encoder.Direction.REVERSE)
-        // perpendicularEncoder.setDirection(Encoder.Direction.REVERSE);
-
-        this.drive = drive;
+        imu = tempImu;
     }
+//    public MyTwoWheelTrackingLocalizer(HardwareMap hardwareMap, SampleMecanumDrive drive) {
+//        super(Arrays.asList(
+//                new Pose2d(PARALLEL_X, PARALLEL_Y, 0),
+//                new Pose2d(PERPENDICULAR_X, PERPENDICULAR_Y, Math.toRadians(90))
+//        ));
+//
+//
+//        parallelEncoder = new Encoder(hardwareMap.get(DcMotorEx.class, "leftEncoder"));
+//        perpendicularEncoder = new Encoder(hardwareMap.get(DcMotorEx.class, "wobble"));
+//
+//        // TODO: reverse any encoders using Encoder.setDirection(Encoder.Direction.REVERSE)
+//        // perpendicularEncoder.setDirection(Encoder.Direction.REVERSE);
+//
+//        this.drive = drive;
+//    }
 
     public static double encoderTicksToInches(double ticks) {
         return WHEEL_RADIUS * 2 * Math.PI * GEAR_RATIO * ticks / TICKS_PER_REV;
@@ -75,13 +87,15 @@ public class MyTwoWheelTrackingLocalizer extends TwoTrackingWheelLocalizer {
     @NonNull
     @Override
     public double getHeading() {
-        return drive.getRawExternalHeading();
+        //return drive.getRawExternalHeading();
+        return imu.getAngularOrientation().firstAngle;
     }
 
     @NonNull
     @Override
     public Double getHeadingVelocity() {
-        return drive.getExternalHeadingVelocity();
+        // return drive.getExternalHeadingVelocity();
+        return (double)(imu.getAngularVelocity().zRotationRate);
     }
 
     @NonNull

@@ -27,6 +27,7 @@ import com.acmerobotics.roadrunner.trajectory.constraints.TrajectoryVelocityCons
 import com.acmerobotics.roadrunner.util.NanoClock;
 import com.qualcomm.hardware.bosch.BNO055IMU;
 import com.qualcomm.hardware.lynx.LynxModule;
+import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
@@ -61,8 +62,8 @@ import static org.firstinspires.ftc.teamcode.drive.DriveConstants.kV;
  */
 @Config
 public class SampleMecanumDrive extends MecanumDrive {
-    public static PIDCoefficients TRANSLATIONAL_PID = new PIDCoefficients(0.275, 0, 0);
-    public static PIDCoefficients HEADING_PID = new PIDCoefficients(-0.23, 0, 0);
+    public static PIDCoefficients TRANSLATIONAL_PID = new PIDCoefficients(2, 0, 0);
+    public static PIDCoefficients HEADING_PID = new PIDCoefficients(1, 0, 0);
 
     public static double LATERAL_MULTIPLIER = 2;
 
@@ -99,6 +100,7 @@ public class SampleMecanumDrive extends MecanumDrive {
     private BNO055IMU imu;
 
     private Servo grab1, grab2, fire;
+    public CRServo grab;
     private static double openPos;
     private static double closePos;
 
@@ -125,7 +127,7 @@ public class SampleMecanumDrive extends MecanumDrive {
         ));
         accelConstraint = new ProfileAccelerationConstraint(MAX_ACCEL);
         follower = new HolonomicPIDVAFollower(TRANSLATIONAL_PID, TRANSLATIONAL_PID, HEADING_PID,
-                new Pose2d(0.5, 0.5, Math.toRadians(5.0)), 0.5);
+                new Pose2d(0.5, 0.5, Math.toRadians(3)), 1);
 
         poseHistory = new LinkedList<>();
 
@@ -161,9 +163,11 @@ public class SampleMecanumDrive extends MecanumDrive {
         flywheel.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         flywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
-        wobble.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        //wobble.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         // wobble.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         wobble.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+
+        grab = hardwareMap.get(CRServo.class, "grab");
 
         grab1 = hardwareMap.get(Servo.class, "grab1");
         grab2 = hardwareMap.get(Servo.class, "grab2");
@@ -191,16 +195,22 @@ public class SampleMecanumDrive extends MecanumDrive {
 
         // TODO: if desired, use setLocalizer() to change the localization method
         // for instance, setLocalizer(new ThreeTrackingWheelLocalizer(...));
-        setLocalizer(new MyTwoWheelTrackingLocalizer(hardwareMap, this));
+        setLocalizer(new MyTwoWheelTrackingLocalizer(hardwareMap, imu));
     }
 
     public void lowerWobble() { // TODO: Test me!!!!
-        wobble.setTargetPosition(-400);
-        wobble.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        wobble.setPower(0.3);
+    }
+    public void stopWobble() {
+        wobble.setPower(0);
     }
 
     public void dropWobble() {
         // TODO: Populate
+    }
+
+    public void setImu(BNO055IMU newImu) {
+        imu = newImu;
     }
 
     public void spinFlywheel(double vel) {
@@ -446,5 +456,9 @@ public class SampleMecanumDrive extends MecanumDrive {
     @Override
     public Double getExternalHeadingVelocity() {
         return (double)(imu.getAngularVelocity().zRotationRate);
+    }
+
+    public BNO055IMU getImu() {
+        return imu;
     }
 }
