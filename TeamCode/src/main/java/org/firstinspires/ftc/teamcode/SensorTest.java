@@ -1,5 +1,6 @@
 package org.firstinspires.ftc.teamcode;
 
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DigitalChannel;
@@ -11,6 +12,7 @@ import org.firstinspires.ftc.robotcontroller.external.samples.SensorREV2mDistanc
 import org.firstinspires.ftc.robotcontroller.external.samples.SensorREVColorDistance;
 
 @TeleOp
+@Disabled
 public class SensorTest extends OpMode {
     private DigitalChannel trig;
     private DigitalChannel echo;

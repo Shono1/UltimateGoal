@@ -44,10 +44,8 @@ import static org.firstinspires.ftc.robotcore.external.navigation.AxesOrder.YZX;
 import static org.firstinspires.ftc.robotcore.external.navigation.AxesReference.EXTRINSIC;
 import static org.firstinspires.ftc.robotcore.external.navigation.VuforiaLocalizer.CameraDirection.BACK;
 
-// TODO: !!!Aimbot salvo is not finished!!! OPMode WILL NOT WORK !!!
-// StopRelease
 @Config
-@TeleOp
+@TeleOp(name = "FCD Tele")
 public class FieldCentricDriveWithVuforia extends LinearOpMode {
     private static final String TAG = "FCD With Vuforia";
     private DcMotor frontLeft, frontRight, backLeft, backRight, intake, wobble;
