@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
+import android.util.Log;
+
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
@@ -18,6 +20,7 @@ import com.qualcomm.robotcore.hardware.PIDFCoefficients;
 import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.robotcore.external.ClassFactory;
+import org.firstinspires.ftc.robotcore.external.Function;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.matrices.OpenGLMatrix;
 import org.firstinspires.ftc.robotcore.external.matrices.VectorF;
@@ -31,6 +34,7 @@ import org.firstinspires.ftc.teamcode.drive.MyTwoWheelTrackingLocalizer;
 import org.firstinspires.ftc.teamcode.drive.SampleMecanumDrive;
 import org.firstinspires.ftc.teamcode.util.PoseStorage;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -45,6 +49,7 @@ import static org.firstinspires.ftc.robotcore.external.navigation.VuforiaLocaliz
 @Config
 @TeleOp
 public class FieldCentricDriveWithVuforia extends LinearOpMode {
+    private static final String TAG = "FCD With Vuforia";
     private DcMotor frontLeft, frontRight, backLeft, backRight, intake, wobble;
     private DcMotorEx flywheel;
     private Servo fire;
@@ -67,7 +72,11 @@ public class FieldCentricDriveWithVuforia extends LinearOpMode {
     private Pose2d STARTING_POSE;
     private MyTwoWheelTrackingLocalizer local;
 
-    private Vector2d GOAL_POS = new Vector2d(72, -36);
+    private final Vector2d GOAL_POS = new Vector2d(72, -36);
+    private final  Vector2d PS_LEFT = new Vector2d(72, -8);
+    private final Vector2d PS_MID = new Vector2d(72, -16);
+    private final Vector2d PS_RIGHT = new Vector2d(72, -24);
+
 
     @Override
     public void runOpMode() {
@@ -182,7 +191,16 @@ public class FieldCentricDriveWithVuforia extends LinearOpMode {
             grab.setPower(0);
         }
         if(gamepad1.x) {
-            alignAndFire(estimate);
+            alignAndShoot(estimate, GOAL_POS, 3, this::getFlywheelVelo);
+        }
+        if(gamepad1.y) {
+            alignAndShoot(estimate, PS_LEFT, 1, this::getPSVelo);
+            alignAndShoot(estimate, PS_MID, 1, this::getPSVelo);
+            alignAndShoot(estimate, PS_RIGHT, 1, this::getPSVelo);
+        }
+
+        if(gamepad1.back) {
+            recalibratePose();
         }
 
         TelemetryPacket velo = new TelemetryPacket();
@@ -196,8 +214,13 @@ public class FieldCentricDriveWithVuforia extends LinearOpMode {
     }
 
 
-    private double getFlywheelVelo(double correctedX) {
-        return (0.5 / 12) * correctedX + 54.375;
+    private double getFlywheelVelo(double dist) {
+        // return (7.7857 / 12.0) * dist * 28;
+        return 11.9 * Math.log(dist) * 28;
+    }
+
+    private double getPSVelo(double dist) {
+        return 11.5 * Math.log(dist) * 28;
     }
 
     private void setVelos(double y, double x, double r) {
@@ -219,7 +242,8 @@ public class FieldCentricDriveWithVuforia extends LinearOpMode {
         telemetry.addData("imu", ao.firstAngle);
         telemetry.addData("x diff", xDiff);
         telemetry.update();
-        flywheel.setVelocity((7.7857 / 12.0) * xDiff * 28);
+        double fwVelo = getFlywheelVelo(distance);
+        flywheel.setVelocity(fwVelo);
         while(Math.abs(ao.firstAngle - theta) > 0.07 && opModeIsActive()) {
             setVelos(0,0,0.2 * Math.abs(ao.firstAngle - theta) / (ao.firstAngle - theta));
             ao = imu.getAngularOrientation();
@@ -229,6 +253,10 @@ public class FieldCentricDriveWithVuforia extends LinearOpMode {
 
         setVelos(0, 0, 0);
         for(int i = 0; i < 3; i++) {
+            while (Math.abs(fwVelo - flywheel.getVelocity()) > 10) {
+                idle();
+            }
+            Log.d(TAG, "Dist: " + distance + "  Pow: " + flywheel.getVelocity() + "  Target: " + fwVelo);
             fire();
             while(System.currentTimeMillis() < fireTime + 300) {
                 idle();
@@ -238,5 +266,83 @@ public class FieldCentricDriveWithVuforia extends LinearOpMode {
                 idle();
             }
         }
+    }
+
+    private void powerShots(Pose2d estimate) {
+        double xDiff = PS_LEFT.getX() - estimate.getX();
+        double yDiff = PS_LEFT.getY() - estimate.getY();
+        double distance = Math.hypot(xDiff, yDiff);
+        double theta = Math.atan2(yDiff, xDiff);
+        Orientation ao = imu.getAngularOrientation();
+        telemetry.addData("theta", theta);
+        telemetry.addData("imu", ao.firstAngle);
+        telemetry.addData("x diff", xDiff);
+        telemetry.update();
+        double fwVelo = getPSVelo(distance);
+        flywheel.setVelocity(fwVelo);
+        while(Math.abs(ao.firstAngle - theta) > 0.07 && opModeIsActive()) {
+            setVelos(0,0,0.2 * Math.abs(ao.firstAngle - theta) / (ao.firstAngle - theta));
+            ao = imu.getAngularOrientation();
+            telemetry.addData("aaaaaaa", "lgbtlajojnfkajdfnkasfnd");
+            idle();
+        }
+
+        setVelos(0, 0, 0);
+        for(int i = 0; i < 3; i++) {
+            while (Math.abs(fwVelo - flywheel.getVelocity()) > 10) {
+                idle();
+            }
+            Log.d(TAG, "Dist: " + distance + "  Pow: " + flywheel.getVelocity() + "  Target: " + fwVelo);
+            fire();
+            while(System.currentTimeMillis() < fireTime + 300) {
+                idle();
+            }
+            rest();
+            while(System.currentTimeMillis() < fireTime + 500) {
+                idle();
+            }
+        }
+    }
+
+    private void alignAndShoot(Pose2d estimate, Vector2d target, int n, Function<Double, Double> velo) {
+        double xDiff = target.getX() - estimate.getX();
+        double yDiff = target.getY() - estimate.getY();
+        double distance = Math.hypot(xDiff, yDiff);
+        double theta = Math.atan2(yDiff, xDiff);
+        Orientation ao = imu.getAngularOrientation();
+        telemetry.addData("theta", theta);
+        telemetry.addData("imu", ao.firstAngle);
+        telemetry.addData("x diff", xDiff);
+        telemetry.update();
+        double fwVelo = velo.apply(distance);
+        flywheel.setVelocity(fwVelo);
+        while(Math.abs(ao.firstAngle - theta) > 0.02 && opModeIsActive()) {
+            setVelos(0,0,0.2 * Math.abs(ao.firstAngle - theta) / (ao.firstAngle - theta));
+            ao = imu.getAngularOrientation();
+            telemetry.addData("aaaaaaa", "lgbtlajojnfkajdfnkasfnd");
+            idle();
+        }
+
+        setVelos(0, 0, 0);
+        for(int i = 0; i < n; i++) {
+            while (Math.abs(fwVelo - flywheel.getVelocity()) > 10) {
+                idle();
+            }
+            Log.d(TAG, "Dist: " + distance + "  Pow: " + flywheel.getVelocity() + "  Target: " + fwVelo);
+            fire();
+            while(System.currentTimeMillis() < fireTime + 300) {
+                idle();
+            }
+            rest();
+            while(System.currentTimeMillis() < fireTime + 500) {
+                idle();
+            }
+        }
+    }
+
+    private void recalibratePose() {
+        local.setPoseEstimate(new Pose2d(-63, 22, imu.getAngularOrientation().firstAngle));
+        // Starting y + 70
+        // Starting x
     }
 }
