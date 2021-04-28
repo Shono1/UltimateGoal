@@ -19,8 +19,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 
 @Config
-@TeleOp
-@Disabled
+@TeleOp(name = "Test FCD")
 public class FieldCentricDrive extends OpMode {
     private DcMotor frontLeft, frontRight, backLeft, backRight, intake, wobble;
     private DcMotorEx flywheel;

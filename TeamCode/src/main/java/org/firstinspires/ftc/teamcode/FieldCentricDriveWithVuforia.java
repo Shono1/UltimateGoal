@@ -56,8 +56,10 @@ public class FieldCentricDriveWithVuforia extends LinearOpMode {
     private FtcDashboard dashboard;
     public static double p = 2;
     public static double i = 1;
-    public static double d = -1;
+    public static double d = 4;
     public static double f = 0;
+    public static double HGCoeff = 37.5;
+    public static double PSCoeff = 35;
 
     public static double velocity = 54.5; // rpm
 
@@ -70,10 +72,11 @@ public class FieldCentricDriveWithVuforia extends LinearOpMode {
     private Pose2d STARTING_POSE;
     private MyTwoWheelTrackingLocalizer local;
 
-    private final Vector2d GOAL_POS = new Vector2d(72, -36);
-    private final  Vector2d PS_LEFT = new Vector2d(72, -8);
-    private final Vector2d PS_MID = new Vector2d(72, -16);
-    private final Vector2d PS_RIGHT = new Vector2d(72, -24);
+    // private final Vector2d GOAL_POS = new Vector2d(72, -36);
+    private final Vector2d GOAL_POS = new Vector2d(72, -30);
+    private final  Vector2d PS_LEFT = new Vector2d(72, 3);
+    private final Vector2d PS_MID = new Vector2d(72, -4);
+    private final Vector2d PS_RIGHT = new Vector2d(72, -11);
 
 
     @Override
@@ -107,7 +110,7 @@ public class FieldCentricDriveWithVuforia extends LinearOpMode {
 
         flywheel.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         flywheel.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        flywheel.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, new PIDFCoefficients(p, i, -d, 0));
+        flywheel.setPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER, new PIDFCoefficients(p, i, d, 0));
 
         dashboard = FtcDashboard.getInstance();
         waitForStart();
@@ -128,7 +131,6 @@ public class FieldCentricDriveWithVuforia extends LinearOpMode {
 
 
     public void run()  {
-        flywheel.getPIDFCoefficients(DcMotor.RunMode.RUN_USING_ENCODER).d = d;
         double gyroTheta = (imu.getAngularOrientation().firstAngle + (2 * Math.PI)) % (2 * Math.PI) - Math.PI;
         double magnitude = Math.sqrt(Math.pow(gamepad1.left_stick_x, 2) + Math.pow(gamepad1.left_stick_y, 2));
         double joyTheta = Math.atan2(gamepad1.left_stick_y, gamepad1.left_stick_x);
@@ -214,11 +216,15 @@ public class FieldCentricDriveWithVuforia extends LinearOpMode {
 
     private double getFlywheelVelo(double dist) {
         // return (7.7857 / 12.0) * dist * 28;
-        return 11.9 * Math.log(dist) * 28;
+//        return (HGCoeff * Math.log(dist) * 28) < 75 * 28 ? HGCoeff * Math.log(dist) * 28 : 80 * 28;
+        return (HGCoeff * Math.log10(dist) * 28) < 75 * 28 ? HGCoeff * Math.log10(dist) * 28 : 80 * 28;
     }
+//    private double getFlywheelVelo(double dist) {
+//        return (double) Math.round(velocity * 28);
+//    }
 
     private double getPSVelo(double dist) {
-        return 11.5 * Math.log(dist) * 28;
+        return (PSCoeff * Math.log10(dist) * 28) < 75 * 28 ? PSCoeff * Math.log10(dist) * 28 : 80 * 28;
     }
 
     private void setVelos(double y, double x, double r) {
@@ -251,7 +257,7 @@ public class FieldCentricDriveWithVuforia extends LinearOpMode {
 
         setVelos(0, 0, 0);
         for(int i = 0; i < 3; i++) {
-            while (Math.abs(fwVelo - flywheel.getVelocity()) > 10) {
+            while (Math.abs(fwVelo - flywheel.getVelocity()) > 0) {
                 idle();
             }
             Log.d(TAG, "Dist: " + distance + "  Pow: " + flywheel.getVelocity() + "  Target: " + fwVelo);
@@ -314,7 +320,7 @@ public class FieldCentricDriveWithVuforia extends LinearOpMode {
         telemetry.update();
         double fwVelo = velo.apply(distance);
         flywheel.setVelocity(fwVelo);
-        while(Math.abs(ao.firstAngle - theta) > 0.02 && opModeIsActive()) {
+        while(Math.abs(ao.firstAngle - theta) > 0.01 && opModeIsActive()) {
             setVelos(0,0,0.2 * Math.abs(ao.firstAngle - theta) / (ao.firstAngle - theta));
             ao = imu.getAngularOrientation();
             telemetry.addData("aaaaaaa", "lgbtlajojnfkajdfnkasfnd");
@@ -323,9 +329,12 @@ public class FieldCentricDriveWithVuforia extends LinearOpMode {
 
         setVelos(0, 0, 0);
         for(int i = 0; i < n; i++) {
+            idle();
+            sleep(2000);
             while (Math.abs(fwVelo - flywheel.getVelocity()) > 10) {
                 idle();
             }
+            sleep(2000);
             Log.d(TAG, "Dist: " + distance + "  Pow: " + flywheel.getVelocity() + "  Target: " + fwVelo);
             fire();
             while(System.currentTimeMillis() < fireTime + 300) {

@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
+import android.util.Log;
+
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.roadrunner.geometry.Pose2d;
 import com.acmerobotics.roadrunner.geometry.Vector2d;
@@ -9,7 +11,9 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 
 import org.firstinspires.ftc.robotcore.external.ClassFactory;
+import org.firstinspires.ftc.robotcore.external.Function;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
+import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
 import org.firstinspires.ftc.robotcore.external.navigation.VuforiaLocalizer;
 import org.firstinspires.ftc.robotcore.external.tfod.Recognition;
 import org.firstinspires.ftc.robotcore.external.tfod.TFObjectDetector;
@@ -41,14 +45,16 @@ public class Auto extends LinearOpMode {
     private final String LABELC = "C";
     private static Pose2d powerShotPos = new Pose2d();
     public static double psVelo = 51;
-    public static double HGVelo = 54;
+    public static double HGVelo = 60;
+
+    private SampleMecanumDrive drive;
 
 
 
 
     @Override
     public void runOpMode() throws InterruptedException {
-        SampleMecanumDrive drive = new SampleMecanumDrive(hardwareMap);
+        drive = new SampleMecanumDrive(hardwareMap);
         drive.setPoseEstimate(STARTING_POS);
         initVuforia();
         initTfod();
@@ -63,7 +69,7 @@ public class Auto extends LinearOpMode {
                 .addTemporalMarker(0, () -> {
                     drive.lowerWobble();
                 })
-                .addTemporalMarker(1.6, () -> {
+                .addTemporalMarker(1.2, () -> {
                     drive.stopWobble();
                 })
                 .build();
@@ -133,7 +139,7 @@ public class Auto extends LinearOpMode {
         drive.spinFlywheel(0);
         drive.followTrajectory(wobbleDeliveryTraj1); // Drive to the correct drop zone
         drive.grab.setPower(0.5); // Release wobble goal from gripper
-        sleep(200);
+        sleep(400);
         drive.grab.setPower(0);
         Trajectory moveBaack = drive.trajectoryBuilder(wobbleDeliveryTraj1.end()).back(12).build();
         drive.followTrajectory(moveBaack);
@@ -148,58 +154,6 @@ public class Auto extends LinearOpMode {
                 .splineToLinearHeading(new Pose2d(-12, -8, Math.toRadians(180)),0)
                 .build();
 
-//       // TODO: Powershot heading
-//        double psHeading1 = 16; // Degrees; Angle to first powershot
-//        Trajectory toPS = drive.trajectoryBuilder(wobbleDeliveryTraj1.end())
-//                .splineToLinearHeading(new Pose2d(-6, -4, Math.toRadians(-90)), 0)
-//                .addTemporalMarker(0, () -> {
-//                    drive.spinFlywheel(psVelo);
-//                }).build();
-////
-//        drive.followTrajectory(toPS); // Drive to powershot shooting spot
-////
-//        drive.fire();
-//        sleep(200);
-//        drive.rest();
-//
-//        drive.followTrajectory(drive.trajectoryBuilder(toPS.end())
-//                .lineToLinearHeading(new Pose2d(-6, -12, Math.toRadians(-90)))
-//                .build());
-//
-//        drive.fire();
-//        sleep(200);
-//        drive.rest();
-//
-//        drive.followTrajectory(drive.trajectoryBuilder(toPS.end())
-//                .lineToLinearHeading(new Pose2d(-6, -20, Math.toRadians(-90)))
-//                .build());
-//
-//        drive.fire();
-//        sleep(200);
-//        drive.rest();
-
-
-//
-//        // TODO: Second and third PS
-//        Trajectory lastPSHeading;
-//        drive.spinFlywheel(0);
-
-//        Trajectory grabWobbleTwo = drive.trajectoryBuilder(lastPSHeading.end())
-//                .lineToLinearHeading(new Pose2d(-38, -24, Math.toRadians(180)))
-//                .build();
-//        drive.followTrajectory(grabWobbleTwo);
-//        // TODO: Do the actual grabby
-//
-//        Trajectory deliverWobbleTwo = drive.trajectoryBuilder(grabWobbleTwo.end()) // TODO: This line
-//                .lineTo()
-//                .build();
-//        drive.followTrajectory(deliverWobbleTwo);
-//        drive.dropWobble();
-//
-//        Trajectory park = drive.trajectoryBuilder(deliverWobbleTwo.end())
-//                .splineToLinearHeading(new Pose2d(12, -30, 0), 0)
-//                .build();
-//        drive.followTrajectory(park);
         PoseStorage.currectPose = drive.getPoseEstimate();
         PoseStorage.imu = drive.getImu();
     }
@@ -232,4 +186,5 @@ public class Auto extends LinearOpMode {
         tfod = ClassFactory.getInstance().createTFObjectDetector(tfodParameters, vuforia);
         tfod.loadModelFromAsset(TFOD_MODEL_ASSET, LABEL_FIRST_ELEMENT, LABEL_SECOND_ELEMENT);
     }
+
 }
