@@ -127,7 +127,7 @@ public class SampleMecanumDrive extends MecanumDrive {
         ));
         accelConstraint = new ProfileAccelerationConstraint(MAX_ACCEL);
         follower = new HolonomicPIDVAFollower(TRANSLATIONAL_PID, TRANSLATIONAL_PID, HEADING_PID,
-                new Pose2d(0.5, 0.5, Math.toRadians(3)), 1);
+                new Pose2d(0.5, 0.5, Math.toRadians(1)), 1);
 
         poseHistory = new LinkedList<>();
 
@@ -203,6 +203,9 @@ public class SampleMecanumDrive extends MecanumDrive {
     }
     public void stopWobble() {
         wobble.setPower(0);
+    }
+    public void raiseWobble() {
+        wobble.setPower(-0.3);
     }
 
     public void dropWobble() {
